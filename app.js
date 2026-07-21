@@ -309,18 +309,18 @@ function downloadCardAsImage(item, tone) {
   ctx.restore();
 
   // Draw Headline Text (Noto Serif Myanmar)
-  ctx.font = "bold 34px 'Noto Serif Myanmar', serif";
+  ctx.font = "bold 38px 'Noto Serif Myanmar', serif";
   ctx.fillStyle = colors.text;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
 
   const headlineLines = wrapCanvasText(ctx, item.headline, 620);
   // Center the headline vertically around y = 430
-  // Each line has a height of 50px, and font height is ~34px
-  let currentY = 430 - ((headlineLines.length - 1) * 50) / 2 - 17;
+  // Each line has a height of 54px, and font height is ~38px
+  let currentY = 430 - ((headlineLines.length - 1) * 54) / 2 - 19;
   headlineLines.forEach(line => {
     ctx.fillText(line, 400, currentY);
-    currentY += 50;
+    currentY += 54;
   });
 
   // Draw Logo Watermark at bottom

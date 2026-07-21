@@ -252,6 +252,18 @@ main { padding: 36px clamp(20px, 5vw, 56px) 0; }
   animation: rise 0.45s ease both;
 }
 
+.card__bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.10;
+  pointer-events: none;
+}
+
 @keyframes rise {
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }

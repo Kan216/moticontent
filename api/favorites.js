@@ -72,6 +72,7 @@ export default async function handler(req, res) {
             headline: card.headline || '',
             body: card.body || '',
             tone: card.tone || 'clay',
+            bgIndex: card.bgIndex || null,
             timestamp: Date.now()
           });
           await kv.set(favoritesKey, favorites);

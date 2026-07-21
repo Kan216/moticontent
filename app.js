@@ -272,7 +272,7 @@ function wrapCanvasText(ctx, text, maxWidth) {
   return lines;
 }
 
-function downloadCardAsImage(item, tone) {
+async function downloadCardAsImage(item, tone) {
   const colors = COLOR_MAP[tone] || COLOR_MAP.paper;
 
   // Create high-res 800x800 square canvas
@@ -284,6 +284,23 @@ function downloadCardAsImage(item, tone) {
   // Fill Background
   ctx.fillStyle = colors.bg;
   ctx.fillRect(0, 0, 800, 800);
+
+  // Load and draw background image if bgIndex exists
+  if (item.bgIndex) {
+    const img = new Image();
+    img.src = `/assets/bg-${item.bgIndex}.jpg`;
+    await new Promise((resolve) => {
+      img.onload = resolve;
+      img.onerror = resolve;
+    });
+
+    if (img.complete && img.naturalWidth > 0) {
+      ctx.save();
+      ctx.globalAlpha = 0.10;
+      ctx.drawImage(img, 0, 0, 800, 800);
+      ctx.restore();
+    }
+  }
 
   // Elegant Inner Border
   ctx.strokeStyle = colors.text;
@@ -350,6 +367,15 @@ function renderItems(items, containerEl, isFavoritesView = false) {
     card.querySelector('.card__headline').textContent = item.headline || '';
     card.querySelector('.card__body').textContent = item.body || '';
 
+    // Assign random background image index 1 to 5 if not already set
+    item.bgIndex = item.bgIndex || Math.floor(Math.random() * 5) + 1;
+
+    // Add the card bg element (as first child so it draws underneath other content)
+    const bgEl = document.createElement('div');
+    bgEl.className = 'card__bg';
+    bgEl.style.backgroundImage = `url('/assets/bg-${item.bgIndex}.jpg')`;
+    card.insertBefore(bgEl, card.firstChild);
+
     // Favorites Toggle binding
     const favBtn = card.querySelector('.card__fav-btn');
     const isFav = favoritesList.some(fav => fav.id === item.id);
@@ -376,9 +402,11 @@ function renderItems(items, containerEl, isFavoritesView = false) {
             cardId: item.id,
             action,
             card: {
+              id: item.id,
               headline: item.headline,
               body: item.body,
-              tone: card.dataset.tone
+              tone: card.dataset.tone,
+              bgIndex: item.bgIndex
             }
           })
         });

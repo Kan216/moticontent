@@ -468,3 +468,29 @@ main { padding: 36px clamp(20px, 5vw, 56px) 0; }
   font-family: var(--body);
 }
 
+.clear-history-btn {
+  background: var(--clay);
+  color: var(--paper);
+  border: none;
+  padding: 10px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 14px;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.clear-history-btn:hover {
+  background: #8f3226;
+}
+
+.clear-history-btn:active {
+  transform: scale(0.98);
+}
+
+.clear-history-btn:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+

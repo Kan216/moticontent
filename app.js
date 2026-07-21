@@ -28,6 +28,8 @@ const els = {
   // View Containers & Empty States
   historyContainer: document.getElementById('historyContainer'),
   historyEmptyState: document.getElementById('historyEmptyState'),
+  clearHistoryBtn: document.getElementById('clearHistoryBtn'),
+  historyActions: document.querySelector('.history-actions'),
   favoritesGrid: document.getElementById('favoritesGrid'),
   favoritesEmptyState: document.getElementById('favoritesEmptyState'),
 };
@@ -150,6 +152,39 @@ if (els.clearKeyBtn) {
   });
 }
 
+if (els.clearHistoryBtn) {
+  els.clearHistoryBtn.addEventListener('click', async () => {
+    if (!confirm('ရာဇဝင်အားလုံးကို ဖျက်ရန် သေချာပါသလား?')) return;
+
+    try {
+      els.clearHistoryBtn.disabled = true;
+      els.clearHistoryBtn.textContent = 'ဖျက်နေပါသည်...';
+
+      const res = await fetch('/api/history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'clear' })
+      });
+
+      if (res.ok) {
+        els.historyContainer.innerHTML = '';
+        els.historyEmptyState.classList.remove('is-hidden');
+        if (els.historyActions) {
+          els.historyActions.style.display = 'none';
+        }
+      } else {
+        const errJson = await res.json();
+        alert(errJson.error || 'ရာဇဝင်ဖျက်ရန် အမှားတစ်ခု ဖြစ်ပွားခဲ့သည်။');
+      }
+    } catch (err) {
+      alert('ချိတ်ဆက်မှု အမှားဖြစ်ပေါ်ခဲ့သည်။');
+    } finally {
+      els.clearHistoryBtn.disabled = false;
+      els.clearHistoryBtn.textContent = 'ရာဇဝင်အားလုံးဖျက်မည်';
+    }
+  });
+}
+
 async function initFavorites() {
   try {
     const res = await fetch('/api/favorites');
@@ -174,6 +209,10 @@ async function loadHistory() {
     els.historyContainer.innerHTML = '';
     const hasHistory = history && history.length > 0;
     els.historyEmptyState.classList.toggle('is-hidden', hasHistory);
+
+    if (els.historyActions) {
+      els.historyActions.style.display = hasHistory ? 'flex' : 'none';
+    }
 
     if (hasHistory) {
       history.forEach(batch => {

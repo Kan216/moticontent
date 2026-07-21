@@ -290,24 +290,6 @@ function downloadCardAsImage(item, tone) {
   ctx.lineWidth = 2;
   ctx.strokeRect(40, 40, 720, 720);
 
-  // Draw Top Seal (Circular "မ" Seal, Rotated)
-  ctx.save();
-  ctx.translate(400, 130);
-  ctx.rotate(-6 * Math.PI / 180);
-
-  ctx.strokeStyle = colors.text;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(0, 0, 28, 0, Math.PI * 2);
-  ctx.stroke();
-
-  ctx.fillStyle = colors.text;
-  ctx.font = "bold 26px 'Noto Serif Myanmar', serif";
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('မ', 0, 0);
-  ctx.restore();
-
   // Draw Headline Text (Noto Serif Myanmar)
   ctx.font = "bold 38px 'Noto Serif Myanmar', serif";
   ctx.fillStyle = colors.text;
@@ -315,9 +297,9 @@ function downloadCardAsImage(item, tone) {
   ctx.textBaseline = 'top';
 
   const headlineLines = wrapCanvasText(ctx, item.headline, 620);
-  // Center the headline vertically around y = 430
+  // Center the headline vertically around y = 380 (middle of the inside frame)
   // Each line has a height of 54px, and font height is ~38px
-  let currentY = 430 - ((headlineLines.length - 1) * 54) / 2 - 19;
+  let currentY = 380 - ((headlineLines.length - 1) * 54) / 2 - 19;
   headlineLines.forEach(line => {
     ctx.fillText(line, 400, currentY);
     currentY += 54;

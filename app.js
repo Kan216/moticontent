@@ -315,20 +315,12 @@ function downloadCardAsImage(item, tone) {
   ctx.textBaseline = 'top';
 
   const headlineLines = wrapCanvasText(ctx, item.headline, 620);
-  let currentY = 240;
+  // Center the headline vertically around y = 430
+  // Each line has a height of 50px, and font height is ~34px
+  let currentY = 430 - ((headlineLines.length - 1) * 50) / 2 - 17;
   headlineLines.forEach(line => {
     ctx.fillText(line, 400, currentY);
     currentY += 50;
-  });
-
-  // Draw Body Text (Noto Sans Myanmar)
-  ctx.font = "500 22px 'Noto Sans Myanmar', sans-serif";
-  const bodyLines = wrapCanvasText(ctx, item.body, 580);
-  currentY += 45; // gap between headline and body
-
-  bodyLines.forEach(line => {
-    ctx.fillText(line, 400, currentY);
-    currentY += 40;
   });
 
   // Draw Logo Watermark at bottom

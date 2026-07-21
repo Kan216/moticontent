@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>မလျှော့နဲ့ — Motivation Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+Myanmar:wght@500;700&family=Noto+Sans+Myanmar:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="topbar__mark">
+      <span class="topbar__seal">မ</span>
+      <div class="topbar__title">
+        <h1>မလျှော့နဲ့</h1>
+        <p>ဆင်းရဲပေမယ့် မတုန်လှုပ်တဲ့ စကားလုံးများ</p>
+      </div>
+    </div>
+
+    <button id="settingsToggle" class="settings-toggle" type="button" aria-expanded="false" aria-controls="settingsPanel">
+      ပြင်ဆင်ရန်
+    </button>
+  </header>
+
+  <section id="settingsPanel" class="settings-panel" hidden>
+    <div class="settings-panel__row">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <label for="apiKey">Gemini API Key</label>
+        <button id="clearKeyBtn" class="clear-key-btn" type="button" style="display: none; background: transparent; border: none; color: var(--clay); cursor: pointer; font-size: 12px; font-family: var(--body); text-decoration: underline; padding: 0;">API Key ဖြတ်မည်</button>
+      </div>
+      <input type="password" id="apiKey" placeholder="AIza..." autocomplete="off" spellcheck="false">
+    </div>
+    <div class="settings-panel__row settings-panel__row--split">
+      <div>
+        <label for="modelName">AI မော်ဒယ်</label>
+        <input type="text" id="modelName" value="gemini-2.5-flash" autocomplete="off" spellcheck="false">
+      </div>
+      <div>
+        <label for="themeNote">ထပ်ဆောင်းဦးတည်ချက် (မဖြစ်မနေမဟုတ်ပါ)</label>
+        <input type="text" id="themeNote" placeholder="ဥပမာ - စီးပွားရေးအခက်အခဲအကြောင်း" autocomplete="off">
+      </div>
+    </div>
+    <p class="settings-panel__hint">
+      ထည့်သွင်းထားသော API Key များကို Browser တွင် သိမ်းဆည်းထားမည်မဟုတ်ဘဲ Server-side Session တွင်သာ လုံခြုံစွာ ယာယီသိမ်းဆည်းထားမည် ဖြစ်ပါသည်။ API key ကို
+      <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> တွင် အခမဲ့ရယူနိုင်ပါသည်။
+    </p>
+  </section>
+
+  <main>
+    <!-- Tab Navigation -->
+    <nav class="tabs" role="tablist">
+      <button id="tabGenerate" class="tab-btn is-active" role="tab" aria-selected="true" aria-controls="viewGenerate" type="button">စကားလုံးသစ်များ</button>
+      <button id="tabHistory" class="tab-btn" role="tab" aria-selected="false" aria-controls="viewHistory" type="button">ကြည့်ဖူးသမျှ</button>
+      <button id="tabFavorites" class="tab-btn" role="tab" aria-selected="false" aria-controls="viewFavorites" type="button">သိမ်းဆည်းထားရာ</button>
+    </nav>
+
+    <!-- Tab View: Generate -->
+    <div id="viewGenerate" class="tab-view">
+      <div class="generate-row">
+        <button id="generateBtn" class="generate-btn" type="button">
+          <span class="generate-btn__label">၁၀ခု စာသားထုတ်မယ်</span>
+          <span class="generate-btn__spinner" aria-hidden="true"></span>
+        </button>
+        <p id="statusLine" class="status-line" role="status"></p>
+      </div>
+
+      <div id="grid" class="grid"></div>
+
+      <div id="emptyState" class="empty-state">
+        <p>ခလုတ်ကိုနှိပ်ပြီး ဒီနေ့အတွက် မတုန်လှုပ်တဲ့ စကားလုံး ၁၀ခုကို ထုတ်ကြည့်ပါ။</p>
+      </div>
+    </div>
+
+    <!-- Tab View: History -->
+    <div id="viewHistory" class="tab-view is-hidden">
+      <div id="historyContainer" class="history-container">
+        <!-- Render history list grouped by batch -->
+      </div>
+      <div id="historyEmptyState" class="empty-state">
+        <p>ထုတ်လုပ်ခဲ့ဖူးသော စကားလုံးများ မရှိသေးပါ။</p>
+      </div>
+    </div>
+
+    <!-- Tab View: Favorites -->
+    <div id="viewFavorites" class="tab-view is-hidden">
+      <div id="favoritesGrid" class="grid">
+        <!-- Render favorited cards here -->
+      </div>
+      <div id="favoritesEmptyState" class="empty-state">
+        <p>သိမ်းဆည်းထားသော စကားလုံးများ မရှိသေးပါ။ ကြယ်ပုံလေးကိုနှိပ်ပြီး စကားလုံးများကို သိမ်းဆည်းပါ။</p>
+      </div>
+    </div>
+  </main>
+
+  <template id="cardTemplate">
+    <article class="card">
+      <span class="card__seal"></span>
+      <h2 class="card__headline"></h2>
+      <p class="card__body"></p>
+      <div class="card__actions">
+        <button class="card__fav-btn" type="button" aria-label="သိမ်းဆည်းရန်">
+          <svg class="star-icon" viewBox="0 0 24 24">
+            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+          </svg>
+        </button>
+        <button class="card__dl-btn" type="button" aria-label="ဓာတ်ပုံအဖြစ် သိမ်းဆည်းရန်">
+          <svg class="download-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+        </button>
+      </div>
+    </article>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>

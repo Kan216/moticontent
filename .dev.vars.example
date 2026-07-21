@@ -1,0 +1,7 @@
+# Local environment variables for Wrangler Pages Dev
+# Rename this file to `.dev.vars` and input your keys.
+# DO NOT commit the actual `.dev.vars` file to your git repository!
+
+# (Optional) System-wide shared Gemini API key.
+# If set, users will not need to input their own API key to generate motivational cards.
+GEMINI_API_KEY="AIzaSyYourSystemGeminiKeyHere"

@@ -1,0 +1,458 @@
+/* ===================================================================
+   Tokens
+   =================================================================== */
+:root {
+  --ink:        #1E1B16;   /* charcoal ink — base text / one of the blocks */
+  --paper:      #F1E8D8;   /* warm cream paper — page background */
+  --clay:       #A63D2F;   /* clay red */
+  --ochre:      #C08A28;   /* ochre gold */
+  --teal:       #1F4B43;   /* deep teal */
+  --rust:       #8C5A3C;   /* muted rust */
+  --paper-dim:  #E4D8C0;
+  --line:       rgba(30,27,22,0.14);
+
+  --display: 'Noto Serif Myanmar', serif;
+  --body:    'Noto Sans Myanmar', sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+}
+
+body {
+  min-height: 100vh;
+  padding: 0 0 64px;
+}
+
+a { color: inherit; }
+
+/* ===================================================================
+   Topbar
+   =================================================================== */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 28px clamp(20px, 5vw, 56px) 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.topbar__mark {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.topbar__seal {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 20px;
+  transform: rotate(-6deg);
+}
+
+.topbar__title h1 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(24px, 3vw, 30px);
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+
+.topbar__title p {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--rust);
+  letter-spacing: 0.02em;
+}
+
+.settings-toggle {
+  flex: none;
+  background: transparent;
+  border: 1px solid var(--ink);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 10px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.settings-toggle:hover { background: var(--ink); color: var(--paper); }
+.settings-toggle:focus-visible,
+.generate-btn:focus-visible,
+.tab-btn:focus-visible,
+.card__action-btn:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+
+/* ===================================================================
+   Settings panel
+   =================================================================== */
+.settings-panel {
+  padding: 20px clamp(20px, 5vw, 56px);
+  border-bottom: 1px solid var(--line);
+  background: var(--paper-dim);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.settings-panel__row { display: flex; flex-direction: column; gap: 6px; }
+
+.settings-panel__row--split {
+  flex-direction: row;
+  gap: 20px;
+}
+.settings-panel__row--split > div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings-panel label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--rust);
+}
+
+.settings-panel input {
+  font-family: var(--body);
+  font-size: 15px;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.settings-panel input::placeholder { color: #9c8f77; }
+
+.settings-panel__hint {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--rust);
+  line-height: 1.6;
+}
+
+@media (max-width: 560px) {
+  .settings-panel__row--split { flex-direction: column; }
+}
+
+/* ===================================================================
+   Generate row
+   =================================================================== */
+main { padding: 36px clamp(20px, 5vw, 56px) 0; }
+
+.generate-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 36px;
+  flex-wrap: wrap;
+}
+
+.generate-btn {
+  position: relative;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 17px;
+  color: var(--paper);
+  background: var(--clay);
+  border: none;
+  padding: 16px 30px;
+  border-radius: 10px;
+  cursor: pointer;
+  letter-spacing: 0.01em;
+  transition: transform 0.12s ease, background 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.generate-btn:hover { background: #8f3226; }
+.generate-btn:active { transform: scale(0.98); }
+.generate-btn:disabled { opacity: 0.7; cursor: progress; }
+
+.generate-btn__spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(241,232,216,0.4);
+  border-top-color: var(--paper);
+  display: none;
+}
+
+.generate-btn.is-loading .generate-btn__spinner {
+  display: inline-block;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.status-line {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--rust);
+}
+
+.status-line[data-tone="error"] { color: var(--clay); font-weight: 600; }
+
+/* ===================================================================
+   Empty state
+   =================================================================== */
+.empty-state {
+  border: 1px dashed var(--line);
+  border-radius: 14px;
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--rust);
+  font-size: 14.5px;
+}
+
+.empty-state.is-hidden { display: none; }
+
+/* ===================================================================
+   Grid + cards
+   =================================================================== */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 18px;
+}
+
+.card {
+  position: relative;
+  border-radius: 14px;
+  padding: 26px 24px 22px;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow: hidden;
+  animation: rise 0.45s ease both;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.card__seal {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  opacity: 0.55;
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+  font-size: 12px;
+}
+.card__seal::before { content: attr(data-n); }
+
+.card__headline {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(20px, 2.4vw, 25px);
+  line-height: 1.35;
+  margin: 0;
+  padding-right: 34px;
+}
+
+.card__body {
+  font-family: var(--body);
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 1.75;
+  margin: 0;
+  opacity: 0.92;
+}
+
+/* Palette variants — cycled per card via data-tone */
+.card[data-tone="clay"]     { background: var(--clay);  color: var(--paper); }
+.card[data-tone="ochre"]    { background: var(--ochre); color: var(--ink); }
+.card[data-tone="teal"]     { background: var(--teal);  color: var(--paper); }
+.card[data-tone="rust"]     { background: var(--rust);  color: var(--paper); }
+.card[data-tone="ink"]      { background: var(--ink);   color: var(--paper); }
+.card[data-tone="paper"]    { background: var(--paper-dim); color: var(--ink); border: 1px solid var(--line); }
+
+/* ===================================================================
+   Responsive
+   =================================================================== */
+/* ===================================================================
+   Responsive
+   =================================================================== */
+@media (max-width: 480px) {
+  .topbar { flex-wrap: wrap; }
+  .generate-btn { width: 100%; justify-content: center; }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .card { animation: none; }
+  .generate-btn__spinner { animation: none; }
+}
+
+/* ===================================================================
+   Tabs & Views
+   =================================================================== */
+.tabs {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 30px;
+  border-bottom: 2px solid var(--line);
+  padding-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.tab-btn {
+  background: transparent;
+  border: none;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--rust);
+  padding: 8px 16px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.tab-btn:hover {
+  background: var(--paper-dim);
+  color: var(--ink);
+}
+
+.tab-btn.is-active {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.tab-view.is-hidden {
+  display: none !important;
+}
+
+/* ===================================================================
+   Card Action Buttons (Favorite / Download)
+   =================================================================== */
+.card {
+  padding-bottom: 54px; /* Make room for the action buttons */
+}
+
+.card__actions {
+  position: absolute;
+  bottom: 14px;
+  right: 16px;
+  display: flex;
+  gap: 8px;
+}
+
+.card__action-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  color: currentColor;
+  opacity: 0.4;
+  display: grid;
+  place-items: center;
+  transition: opacity 0.15s ease, transform 0.15s ease, background 0.15s ease;
+}
+
+.card:hover .card__action-btn {
+  opacity: 0.85;
+}
+
+.card__action-btn:hover {
+  opacity: 1 !important;
+  transform: scale(1.15);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.card[data-tone="paper"] .card__action-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.card__fav-btn.is-favorited {
+  opacity: 1 !important;
+  color: var(--ochre);
+}
+
+.card[data-tone="ochre"] .card__fav-btn.is-favorited {
+  color: var(--clay);
+}
+
+.star-icon, .download-icon {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  transition: fill 0.15s ease;
+}
+
+.card__fav-btn.is-favorited .star-icon {
+  fill: currentColor;
+}
+
+/* ===================================================================
+   History Chronological Grouping
+   =================================================================== */
+.history-batch {
+  margin-bottom: 48px;
+  border-bottom: 1px dashed var(--line);
+  padding-bottom: 36px;
+}
+
+.history-batch:last-child {
+  border-bottom: none;
+}
+
+.history-batch__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.history-batch__title {
+  font-family: var(--display);
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--ink);
+}
+
+.history-batch__meta {
+  font-size: 13.5px;
+  color: var(--rust);
+  font-family: var(--body);
+}
+

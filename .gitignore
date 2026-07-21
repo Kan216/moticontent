@@ -1,0 +1,9 @@
+# Cloudflare Pages / Wrangler directories
+.wrangler/
+node_modules/
+
+# Local environment variables containing sensitive keys
+.dev.vars
+
+# Log files
+*.log

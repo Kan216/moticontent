@@ -1,5 +1,6 @@
 # Cloudflare Pages / Wrangler directories
 .wrangler/
+.vercel/
 node_modules/
 
 # Local environment variables containing sensitive keys

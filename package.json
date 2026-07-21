@@ -2,10 +2,15 @@
   "name": "motic",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "wrangler pages dev ."
+    "dev": "vercel dev",
+    "deploy": "vercel deploy"
+  },
+  "dependencies": {
+    "@vercel/kv": "^1.0.1"
   },
   "devDependencies": {
-    "wrangler": "^4.112.0"
+    "vercel": "^37.0.0"
   }
 }

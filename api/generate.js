@@ -1,3 +1,5 @@
+import { kv } from '@vercel/kv';
+
 function parseCookies(cookieHeader) {
   const list = {};
   if (!cookieHeader) return list;
@@ -45,7 +47,6 @@ function buildPrompt(extraNote) {
   return base + noteBlock;
 }
 
-// Lightweight server-side validator for content quality
 function validateAndFilterContent(items) {
   if (!Array.isArray(items) || items.length !== 10) {
     throw new Error('Motivational စာသား ၁၀ ခု တိတိ မရရှိပါ။');
@@ -63,17 +64,14 @@ function validateAndFilterContent(items) {
     const hl = item.headline.trim();
     const bd = item.body.trim();
 
-    // Must contain Burmese characters
     if (!burmeseRegex.test(hl) || !burmeseRegex.test(bd)) {
       throw new Error('မြန်မာစာလုံးများ ပါဝင်ခြင်းမရှိပါ။');
     }
 
-    // Must not contain English words
     if (englishRegex.test(hl) || englishRegex.test(bd)) {
       throw new Error('အင်္ဂလိပ်စာလုံးများ ပါဝင်နေပါသည်။');
     }
 
-    // Character length check
     if (hl.length < 3 || hl.length > 50) {
       throw new Error('ခေါင်းစဉ် တိုလွန်း သို့မဟုတ် ရှည်လွန်းနေသည်။');
     }
@@ -83,7 +81,6 @@ function validateAndFilterContent(items) {
   }
 }
 
-// Helper function to fetch with exponential backoff retries for transient errors (5xx/429)
 async function fetchWithRetry(url, options, maxRetries = 3, initialDelay = 500) {
   let delay = initialDelay;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -106,9 +103,13 @@ async function fetchWithRetry(url, options, maxRetries = 3, initialDelay = 500) 
   }
 }
 
-export async function onRequestPost(context) {
-  const { request, env } = context;
-  const cookies = parseCookies(request.headers.get('Cookie'));
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', ['POST']);
+    return res.status(405).end(`Method ${req.method} Not Allowed`);
+  }
+
+  const cookies = parseCookies(req.headers.cookie);
 
   let userId = cookies['user_id'];
   let isNewUser = false;
@@ -118,38 +119,34 @@ export async function onRequestPost(context) {
   }
 
   // 1. IP-based Rate Limiting (5 requests per minute)
-  const ip = request.headers.get('CF-Connecting-IP') || '127.0.0.1';
+  const forwarded = req.headers['x-forwarded-for'];
+  const ip = forwarded ? forwarded.split(',')[0].trim() : (req.headers['x-real-ip'] || '127.0.0.1');
   const nowMinutes = Math.floor(Date.now() / 60000);
   const rateLimitKey = `rate_limit:${ip}:${nowMinutes}`;
 
   let rateLimitCount = 0;
-  if (env.KV_STORE) {
-    const currentCount = await env.KV_STORE.get(rateLimitKey);
+  try {
+    const currentCount = await kv.get(rateLimitKey);
     if (currentCount) {
       rateLimitCount = parseInt(currentCount, 10);
     }
+  } catch (err) {
+    console.error('KV rate limit read error:', err);
   }
 
   if (rateLimitCount >= 5) {
-    return new Response(
-      JSON.stringify({ error: 'ခေတ္တစောင့်ဆိုင်းပေးပါ။ တစ်မိနစ်လျှင် ၅ ကြိမ်ထက်ပို၍ မလုပ်ဆောင်နိုင်ပါ။' }),
-      {
-        status: 429,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
-  }
-
-  if (env.KV_STORE) {
-    await env.KV_STORE.put(rateLimitKey, String(rateLimitCount + 1), { expirationTtl: 60 });
+    return res.status(429).json({ error: 'ခေတ္တစောင့်ဆိုင်းပေးပါ။ တစ်မိနစ်လျှင် ၅ ကြိမ်ထက်ပို၍ မလုပ်ဆောင်နိုင်ပါ။' });
   }
 
   try {
-    // 2. Parse request parameters
-    const requestBody = await request.json();
-    let { model, extraNote } = requestBody;
+    await kv.set(rateLimitKey, rateLimitCount + 1, { ex: 60 });
+  } catch (err) {
+    console.error('KV rate limit write error:', err);
+  }
 
-    // Validate and sanitize model
+  try {
+    let { model, extraNote } = req.body || {};
+
     if (!model || !ALLOWED_MODELS.includes(model)) {
       model = 'gemini-2.5-flash';
     }
@@ -157,23 +154,21 @@ export async function onRequestPost(context) {
     extraNote = typeof extraNote === 'string' ? extraNote.substring(0, 200).trim() : '';
 
     // 3. API Key lookup (Priority: Env variable > Cookie session)
-    let apiKey = env.GEMINI_API_KEY;
+    let apiKey = process.env.GEMINI_API_KEY;
     const sessionId = cookies['session_id'];
-    if (!apiKey && sessionId && env.KV_STORE) {
-      apiKey = await env.KV_STORE.get(`session:${sessionId}`);
+    if (!apiKey && sessionId) {
+      try {
+        apiKey = await kv.get(`session:${sessionId}`);
+      } catch (err) {
+        console.error('KV session get error:', err);
+      }
     }
 
     if (!apiKey) {
-      return new Response(
-        JSON.stringify({ error: 'API key မရှိပါ။ Setup တွင် API key အရင်ထည့်ပေးပါ။' }),
-        {
-          status: 401,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
+      return res.status(401).json({ error: 'API key မရှိပါ။ Setup တွင် API key အရင်ထည့်ပေးပါ။' });
     }
 
-    // 4. Call Gemini API and Validate Content (with up to 2 Generation Attempts on validation failure)
+    // 4. Call Gemini API and Validate Content
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
     let parsedItems = null;
     let lastError = null;
@@ -183,7 +178,7 @@ export async function onRequestPost(context) {
         const geminiBody = {
           contents: [{ parts: [{ text: buildPrompt(extraNote) }] }],
           generationConfig: {
-            temperature: 0.95, // Tuned for optimal semantic consistency and structural format safety
+            temperature: 0.95,
             responseMimeType: 'application/json',
             responseSchema: {
               type: 'ARRAY',
@@ -201,25 +196,23 @@ export async function onRequestPost(context) {
           },
         };
 
-        const res = await fetchWithRetry(geminiUrl, {
+        const geminiRes = await fetchWithRetry(geminiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(geminiBody),
         });
 
-        if (!res.ok) {
+        if (!geminiRes.ok) {
           let detail = '';
           try {
-            const errJson = await res.json();
+            const errJson = await geminiRes.json();
             detail = errJson?.error?.message || '';
           } catch (_) {}
           
-          console.error("RAW GEMINI API ERROR:", res.status, detail);
-          
           let burmeseError = 'Gemini API သို့ ချိတ်ဆက်ရာတွင် အမှားတစ်ခု ဖြစ်ပေါ်ခဲ့ပါသည်။';
-          if (res.status === 429) {
+          if (geminiRes.status === 429) {
             burmeseError = 'Gemini API ကန့်သတ်ချက် ပြည့်သွားပါပြီ။ ခေတ္တစောင့်ပြီးမှ ပြန်ကြိုးစားပါ။';
-          } else if (res.status === 400 && detail.includes('API key')) {
+          } else if (geminiRes.status === 400 && detail.includes('API key')) {
             burmeseError = 'ထည့်သွင်းထားသော API key မမှန်ကန်ပါ။ Setup တွင် ပြန်လည်စစ်ဆေးပေးပါ။';
           } else if (detail) {
             burmeseError = `အမှားဖော်ပြချက် - ${detail}`;
@@ -227,7 +220,7 @@ export async function onRequestPost(context) {
           throw new Error(burmeseError);
         }
 
-        const data = await res.json();
+        const data = await geminiRes.json();
 
         // Check content safety finishReason
         const candidate = data?.candidates?.[0];
@@ -251,11 +244,12 @@ export async function onRequestPost(context) {
 
         let parsed = JSON.parse(text);
 
-        // Run validation check (e.g. English leakage, lengths)
+        // Run validation check
         validateAndFilterContent(parsed);
 
-                parsedItems = parsed;
+        parsedItems = parsed;
         lastError = null;
+        
         console.log(JSON.stringify({
           timestamp: new Date().toISOString(),
           event: "GENERATE_SUCCESS",
@@ -264,7 +258,7 @@ export async function onRequestPost(context) {
           attempts: attempt,
           hasExtraNote: !!extraNote
         }));
-        break; // Successfully generated and validated!
+        break; 
       } catch (err) {
         lastError = err;
         console.warn(JSON.stringify({
@@ -287,13 +281,7 @@ export async function onRequestPost(context) {
         ip: ip,
         hasExtraNote: !!extraNote
       }));
-      return new Response(
-        JSON.stringify({ error: `အရည်အသွေးစစ်ဆေးမှု မအောင်မြင်ပါ။ ${lastError.message}` }),
-        {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
+      return res.status(500).json({ error: `အရည်အသွေးစစ်ဆေးမှု မအောင်မြင်ပါ။ ${lastError.message}` });
     }
 
     // 5. Assign unique IDs to the generated cards
@@ -304,14 +292,12 @@ export async function onRequestPost(context) {
     }));
 
     // 6. Save batch to user's history in KV
-    if (env.KV_STORE) {
+    try {
       const historyKey = `history:${userId}`;
       let history = [];
-      const storedHistory = await env.KV_STORE.get(historyKey);
+      const storedHistory = await kv.get(historyKey);
       if (storedHistory) {
-        try {
-          history = JSON.parse(storedHistory);
-        } catch (_) {}
+        history = typeof storedHistory === 'string' ? JSON.parse(storedHistory) : storedHistory;
       }
 
       const newBatch = {
@@ -325,36 +311,26 @@ export async function onRequestPost(context) {
       history.unshift(newBatch);
       history = history.slice(0, 10); // Keep last 10 batches
 
-      await env.KV_STORE.put(historyKey, JSON.stringify(history));
+      await kv.set(historyKey, history);
+    } catch (err) {
+      console.error('KV history write error:', err);
     }
 
-    // 7. Construct Response with User ID Cookie if new
-    const responseHeaders = new Headers({ 'Content-Type': 'application/json' });
+    // 7. Set cookie if new
     if (isNewUser) {
-      responseHeaders.append(
+      res.setHeader(
         'Set-Cookie',
         `user_id=${userId}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${365 * 24 * 60 * 60}`
       );
     }
 
-    return new Response(
-      JSON.stringify(itemsWithIds),
-      {
-        headers: responseHeaders,
-      }
-    );
+    return res.status(200).json(itemsWithIds);
 
   } catch (err) {
     let detailMsg = err.message;
     if (detailMsg.includes('fetch')) {
       detailMsg = 'ကွန်ရက်ချိတ်ဆက်မှု အဆင်မပြေဖြစ်နေပါသည်။';
     }
-    return new Response(
-      JSON.stringify({ error: 'ဆာဗာပိုင်းဆိုင်ရာ အမှားတစ်ခု ဖြစ်ပွားခဲ့ပါသည်။ ' + detailMsg }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    return res.status(500).json({ error: 'ဆာဗာပိုင်းဆိုင်ရာ အမှားတစ်ခု ဖြစ်ပွားခဲ့ပါသည်။ ' + detailMsg });
   }
 }
